@@ -1,1 +1,2 @@
-# PHP Iveri Enterprise API Wrapper
+# Iveri Enterprise Integration API Package
+Under Development
