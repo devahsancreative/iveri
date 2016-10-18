@@ -24,6 +24,9 @@ class Configuration {
     private $iveriApplicationId;
     private $iveriCertificateId;
     private $iveriApiLive;
+    private $iveriCmpiProcessorId;
+    private $iveriCmpiPassword;
+    private $iveriMerchantId;
 
     private $built = FALSE;
 
@@ -32,21 +35,25 @@ class Configuration {
       $validation = new Factory(new Translator(new FileLoader(new Filesystem, ''), ''), new Container);
 
       return $validation->make(get_object_vars($this), [
-        'iveriGateway'       => 'required',
-        'iveriUserGroupId'   => 'required',
-        'iveriUsername'      => 'required',
-        'iveriPassword'      => 'required',
-        'iveriApplicationId' => 'required',
-        'iveriCertificateId' => 'required',
-        'iveriApiLive'       => 'required',
+        'iveriUserGroupId'      => 'required',
+        'iveriUsername'         => 'required',
+        'iveriPassword'         => 'required',
+        'iveriApplicationId'    => 'required',
+        'iveriCertificateId'    => 'required',
+        'iveriApiLive'          => 'required',
+        'iveriCmpiProcessorId'  => 'required',
+        'iveriCmpiPassword'     => 'required',
+        'iveriMerchantId'       => 'required',
       ], [
-        'iveriGateway.required'        => 'The Gateway is required',
         'iveriUserGroupId.required'    => 'The User Group ID is required',
         'iveriUsername.required'       => 'The Username is required',
         'iveriPassword.required'       => 'The Password is required',
         'iveriApplicationId.required'  => 'The Application ID is required',
         'iveriCertificateId.required'  => 'The Certificate ID is required',
         'iveriApiLive.required'        => 'The API live boolean is required',
+        'iveriCmpiProcessorId.required'=> 'The CMPI Processor ID is required',
+        'iveriCmpiPassword.required'   => 'The CMPI Password is required',
+        'iveriMerchantId'              => 'The Merchant ID is required',
       ]);
     }
 
@@ -61,6 +68,11 @@ class Configuration {
 
       return $this;
     }
+
+    public function isBuilt() {
+      return $this->built;
+    }
+
 
 
     /**
@@ -160,6 +172,30 @@ class Configuration {
     }
 
     /**
+     * Get the value of Iveri Application Id
+     *
+     * @return mixed
+     */
+    public function getIveriApplicationId()
+    {
+        return $this->iveriApplicationId;
+    }
+
+    /**
+     * Set the value of Iveri Application Id
+     *
+     * @param mixed iveriApplicationId
+     *
+     * @return self
+     */
+    public function setIveriApplicationId($iveriApplicationId)
+    {
+        $this->iveriApplicationId = $iveriApplicationId;
+
+        return $this;
+    }
+
+    /**
      * Get the value of Iveri Certificate Id
      *
      * @return mixed
@@ -203,6 +239,81 @@ class Configuration {
     public function setIveriApiLive($iveriApiLive)
     {
         $this->iveriApiLive = $iveriApiLive;
+
+        return $this;
+    }
+
+    /**
+     * Get the value of Iveri Cmpi Processor Id
+     *
+     * @return mixed
+     */
+    public function getIveriCmpiProcessorId()
+    {
+        return $this->iveriCmpiProcessorId;
+    }
+
+    /**
+     * Set the value of Iveri Cmpi Processor Id
+     *
+     * @param mixed iveriCmpiProcessorId
+     *
+     * @return self
+     */
+    public function setIveriCmpiProcessorId($iveriCmpiProcessorId)
+    {
+        $this->iveriCmpiProcessorId = $iveriCmpiProcessorId;
+
+        return $this;
+    }
+
+    /**
+     * Get the value of Iveri Cmpi Password
+     *
+     * @return mixed
+     */
+    public function getIveriCmpiPassword()
+    {
+        return $this->iveriCmpiPassword;
+    }
+
+    /**
+     * Set the value of Iveri Cmpi Password
+     *
+     * @param mixed iveriCmpiPassword
+     *
+     * @return self
+     */
+    public function setIveriCmpiPassword($iveriCmpiPassword)
+    {
+        $this->iveriCmpiPassword = $iveriCmpiPassword;
+
+        return $this;
+    }
+
+
+
+
+    /**
+     * Get the value of Iveri Merchant Id
+     *
+     * @return mixed
+     */
+    public function getIveriMerchantId()
+    {
+        return $this->iveriMerchantId;
+    }
+
+    /**
+     * Set the value of Iveri Merchant Id
+     *
+     * @param mixed iveriMerchantId
+     *
+     * @return self
+     */
+    public function setIveriMerchantId($iveriMerchantId)
+    {
+        $this->iveriMerchantId = $iveriMerchantId;
 
         return $this;
     }

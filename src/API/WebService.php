@@ -11,29 +11,28 @@ namespace StephenLake\Iveri\API;
 use StephenLake\Iveri\Objects\Configuration;
 use StephenLake\Iveri\Objects\Transaction;
 use StephenLake\Iveri\Objects\TransactionResult;
+use StephenLake\Centinel\CentinelService;
+use StephenLake\Centinel\Util\CurrencyCode;
+use GuzzleHttp\Client;
+use GuzzleHttp\Psr7\Request;
+use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\Exception\ClientException;
+use Exception;
 use stdClass;
 
 class WebService {
 
   const IVERI_ENTERPRISE_URL = 'https://portal.nedsecure.co.za/api/';
 
-  const CENTINEL_URL_LIVE = 'https://msgnedcor.bankserv.co.za/maps/txns.asp';
-  const CENTINEL_URL_TEST = 'https://msgtest.bankserv.co.za/maps/txns.asp';
-
-  // Centinel
-  // Live
-  // https://msgnedcor.bankserv.co.za/maps/txns.asp // VISA & MasterCard
-  // https://msgnedcor.bankserv.co.za/maps/amex.asp  // American Express
-  // Testing
-  // https://msgtest.bankserv.co.za/maps/txns.asp // VISA & MasterCard
-  // https://msgtest.bankserv.co.za/maps/amex.asp // American Express
-
   private $config;
   private $transaction;
+
+  private $iveriGatewayURL;
 
   public function __construct(Configuration $config, Transaction $transaction) {
       $this->config = $config;
       $this->transaction = $transaction;
+      $this->iveriGatewayURL = is_null($this->config->getIveriGateway()) ? self::IVERI_ENTERPRISE_URL : $this->config->getIveriGateway();
   }
 
   public function performTransaction() {
@@ -54,124 +53,102 @@ class WebService {
 
   private function performThreeDomainLookup() {
 
-      $soapURL = self::MYGATE_THREE_DOMAIN_URL_LIVE;
+    $centinel = new CentinelService();
+    $centinel->setRequestProcessorId($this->config->getIveriCmpiProcessorId())
+             ->setRequestMerchantId($this->config->getIveriMerchantId())
+             ->setRequestTransactionPwd($this->config->getIveriCmpiPassword())
+             ->setRequestTransactionType(CentinelService::TRANS_CREDIT_DEBIT_CARD)
+             ->setRequestAmount($this->transaction->getTransactionAmountInCents())
+             ->setRequestCurrencyCode(CurrencyCode::getNumericCode($this->transaction->getTransactionCurrency()))
+             ->setRequestOrderNumber($this->transaction->getTransactionReference())
+             ->setRequestCardNumber($this->transaction->getTransactionPanNumber())
+             ->setRequestCardExpMonth($this->transaction->getTransactionPanExpiryMonth())
+             ->setRequestCardExpYear($this->transaction->getTransactionPanExpiryYear())
+             ->setRequestApiLive($this->config->getIveriApiLive())
+             ->requestLookup();
 
-      if (!$this->config->getIveriApiLive()) {
-          $soapURL = self::MYGATE_THREE_DOMAIN_URL_TEST;
-      }
+     $payload = new stdClass();
+     $payload->success = FALSE;
+     $payload->transactionType = $this->transaction->getTransactionType();
 
-      $soapResponse = NULL;
+    if ($centinel->succeeds()) {
 
-      $payload = new stdClass();
+      $sanitizedData = $centinel->getResult();
+
+      $payload->success = TRUE;
+      $payload->errorCode = isset($sanitizedData['ErrorNo']) ? $sanitizedData['ErrorNo'] : NULL;
+      $payload->errorMessage = isset($sanitizedData['ErrorDesc']) ? str_replace('&apos;', '', $sanitizedData['ErrorDesc']) : NULL;
+      $payload->transactionIndex = $sanitizedData['TransactionId'];
+      $payload->threeDomainEnrolled = $sanitizedData['Enrolled'];
+      $payload->threeDomainECI = isset($sanitizedData['EciFlag']) ? $sanitizedData['EciFlag'] : NULL;
+      $payload->threeDomainACSUrl = isset($sanitizedData['ACSUrl']) ? $sanitizedData['ACSUrl'] : NULL;
+      $payload->threeDomainPAREQ = isset($sanitizedData['Payload']) ? $sanitizedData['Payload'] : NULL;
+      $payload->threeDomainOrderId = isset($sanitizedData['OrderId']) ? $sanitizedData['OrderId'] : NULL;
+
+      $this->transaction
+           ->setTransactionIndex($payload->transactionIndex)
+           ->setTransactionThreeDomainServerPAREQ($payload->threeDomainPAREQ);
+    } else {
+
+      $error = $centinel->getError();
+
       $payload->success = FALSE;
-      $payload->transactionType = $this->transaction->getTransactionType();
+      $payload->errorCode = $error['code'];
+      $payload->errorMessage = $error['desc'];
+      $payload->transactionIndex = NULL;
 
-      try {
-        $this->transaction->getTransactionListener()->threeDomainLookupInitiated($this->transaction);
+    }
 
-        $soapClient = new SoapClient($soapURL);
-        $soapResponse = $soapClient->__soapCall('lookup', [
-          'MerchantID'      => $this->config->getIveriCustomerId(),
-          'ApplicationID'   => $this->config->getIveriApplicationId(),
-          'Mode'            => intval($this->config->getIveriApiLive()),
-          'PAN'             => $this->transaction->getTransactionPanNumber(),
-          'PANExpr'         => $this->transaction->getTransactionPanExpiry(),
-          'PurchaseAmount'  => $this->transaction->getTransactionAmount()
-        ],[
-            "exceptions" => true,
-        ]);
-      }
-      catch (SoapFault $e) {
-        $payload->errorCode = 'X000';
-        $payload->errorMessage = 'SOAP API Connection Fault. An internal network error has occurred, please try again later.';
-        $payload->transactionIndex = NULL;
-      }
+    $this->transaction->setTransactionResult(new TransactionResult($payload));
 
-      if (is_soap_fault($soapResponse) || !is_array($soapResponse)) {
-          $payload->errorCode = 'X000';
-          $payload->errorMessage = NULL;
-      } else {
-        $sanitizedData = $this->prettifyDisgustingResponse($soapResponse);
-
-        if (!isset($sanitizedData['Result'])) {
-            $payload->errorCode = 'X001';
-            $payload->errorMessage = isset($sanitizedData['ErrorDesc']) ? str_replace('&apos;', '', $sanitizedData['ErrorDesc']) : NULL;
-            $payload->transactionIndex = NULL;
-        } else {
-          $payload->success = ($sanitizedData['Result'] > -1);
-          $payload->errorCode = isset($sanitizedData['ErrorNo']) ? $sanitizedData['ErrorNo'] : NULL;
-          $payload->errorMessage = isset($sanitizedData['ErrorDesc']) ? str_replace('&apos;', '', $sanitizedData['ErrorDesc']) : NULL;
-          $payload->transactionIndex = $sanitizedData['TransactionIndex'];
-          $payload->threeDomainEnrolled = $sanitizedData['Enrolled'];
-          $payload->threeDomainECI = isset($sanitizedData['ECI']) ? $sanitizedData['ECI'] : NULL;
-          $payload->threeDomainACSUrl = isset($sanitizedData['ACSUrl']) ? $sanitizedData['ACSUrl'] : NULL;
-          $payload->threeDomainPAREQ = isset($sanitizedData['PAReqMsg']) ? $sanitizedData['PAReqMsg'] : NULL;
-
-          $this->transaction
-               ->setTransactionIndex($payload->transactionIndex)
-               ->setTransactionThreeDomainServerPAREQ($payload->threeDomainPAREQ);
-        }
-      }
-
-      $this->transaction->setTransactionResult(new TransactionResult($payload));
-
-      if ($this->transaction->fails()) {
-          $this->transaction->getTransactionListener()->threeDomainLookupFailed($this->transaction);
-      } else {
-          $this->transaction->getTransactionListener()->threeDomainLookupSucceeded($this->transaction);
-      }
+    if ($this->transaction->fails()) {
+        $this->transaction->getTransactionListener()->threeDomainLookupFailed($this->transaction);
+    } else {
+        $this->transaction->getTransactionListener()->threeDomainLookupSucceeded($this->transaction);
+    }
   }
 
   private function performThreeDomainAuthorize() {
 
-    $soapURL = self::MYGATE_THREE_DOMAIN_URL_LIVE;
+    $centinel = new CentinelService();
+    $centinel->setRequestProcessorId($this->config->getIveriCmpiProcessorId())
+             ->setRequestMerchantId($this->config->getIveriMerchantId())
+             ->setRequestTransactionPwd($this->config->getIveriCmpiPassword())
+             ->setRequestTransactionType(CentinelService::TRANS_CREDIT_DEBIT_CARD)
+             ->setRequestTransactionId($this->transaction->getTransactionIndex())
+             ->setRequestPARES($this->transaction->getTransactionThreeDomainServerPARES())
+             ->setRequestApiLive($this->config->getIveriApiLive())
+             ->requestAuthenticate();
 
-    if (!$this->config->getIveriApiLive()) {
-        $soapURL = self::MYGATE_THREE_DOMAIN_URL_TEST;
-    }
+     $payload = new stdClass();
+     $payload->success = FALSE;
+     $payload->transactionType = $this->transaction->getTransactionType();
 
-    $soapResponse = NULL;
+    if ($centinel->succeeds()) {
 
-    $payload = new stdClass();
-    $payload->success = FALSE;
-    $payload->transactionType = $this->transaction->getTransactionType();
+      $sanitizedData = $centinel->getResult();
 
-    try {
-      $this->transaction->getTransactionListener()->threeDomainAuthorizeInitiated($this->transaction);
+      $payload->success = TRUE;
+      $payload->errorCode = isset($sanitizedData['ErrorNo']) ? $sanitizedData['ErrorNo'] : NULL;
+      $payload->errorMessage = isset($sanitizedData['ErrorDesc']) ? str_replace('&apos;', '', $sanitizedData['ErrorDesc']) : NULL;
 
-      $soapClient = new SoapClient($soapURL);
-      $soapResponse = $soapClient->__soapCall('authenticate', [
-        'TransactionIndex'  => $this->transaction->getTransactionIndex(),
-        'PAResPayload'      => $this->transaction->getTransactionThreeDomainServerPARES(),
-      ],[
-          "exceptions" => true,
-      ]);
-    }
-    catch (SoapFault $e) {
-      $payload->errorCode = 'X000';
-      $payload->errorMessage = 'SOAP API Connection Fault. An internal network error has occurred, please try again later.';
-    }
+      $payload->threeDomainECI = isset($sanitizedData['EciFlag']) ? $sanitizedData['EciFlag'] : NULL;
+      $payload->threeDomainCAVV = isset($sanitizedData['Cavv']) ? $sanitizedData['Cavv'] : NULL;
+      $payload->threeDomainXID = isset($sanitizedData['Xid']) ? $sanitizedData['Xid'] : NULL;
+      $payload->threeDomainSignature = isset($sanitizedData['SignatureVerification']) ? $sanitizedData['SignatureVerification'] : NULL;
+      $payload->threeDomainPARESStatus = isset($sanitizedData['PAResStatus']) ? $sanitizedData['PAResStatus'] : NULL;
 
-    if (is_soap_fault($soapResponse) || !is_array($soapResponse)) {
-        $payload->errorCode = 'X000';
-        $payload->errorMessage = NULL;
+      $this->transaction->setTransactionCAVV($payload->threeDomainCAVV)
+                        ->setTransactionXID($payload->threeDomainXID)
+                        ->setTransactionSignature($payload->threeDomainSignature);
     } else {
-      $sanitizedData = $this->prettifyDisgustingResponse($soapResponse);
 
-      if (!isset($sanitizedData['Result'])) {
-          $payload->errorCode = 'X001';
-          $payload->errorMessage = isset($sanitizedData['ErrorDesc']) ? str_replace('&apos;', '', $sanitizedData['ErrorDesc']) : NULL;
-          $payload->transactionIndex = NULL;
-      } else {
-        $payload->success = ($sanitizedData['Result'] == 0);
-        $payload->errorCode = isset($sanitizedData['ErrorNo']) ? $sanitizedData['ErrorNo'] : NULL;
-        $payload->errorMessage = isset($sanitizedData['ErrorDesc']) ? str_replace('&apos;', '', $sanitizedData['ErrorDesc']) : NULL;
-        $payload->threeDomainPARESStatus = isset($sanitizedData['PAResStatus']) ? $sanitizedData['PAResStatus'] : NULL;
-        $payload->threeDomainSignatureVerification = isset($sanitizedData['SignatureVerification']) ? $sanitizedData['SignatureVerification'] : NULL;
-        $payload->threeDomainXID = isset($sanitizedData['XID']) ? $sanitizedData['XID'] : NULL;
-        $payload->threeDomainCAVV = isset($sanitizedData['Cavv']) ? $sanitizedData['Cavv'] : NULL;
-        $payload->threeDomainECI = isset($sanitizedData['ECI']) ? $sanitizedData['ECI'] : NULL;
-      }
+      $error = $centinel->getError();
+
+      $payload->success = FALSE;
+      $payload->errorCode = $error['code'];
+      $payload->errorMessage = $error['desc'];
+      $payload->transactionIndex = NULL;
     }
 
     $this->transaction->setTransactionResult(new TransactionResult($payload));
@@ -186,144 +163,96 @@ class WebService {
 
   private function performDebit() {
 
-    $soapURL = self::MYGATE_ENTERPRISE_URL_LIVE;
+    $this->submitIveriRequest('POST', 'transactions', [
+      'Content-Type' => 'application/json',
+      'body' => json_encode([
+          'CertificateID' => $this->config->getIveriCertificateId(),
+          'Transaction' => [
+              'ApplicationID' => $this->config->getIveriApplicationId(),
+              'Command' => 'Debit',
+              'Mode' => $this->config->getIveriApiLive() ? 'Live' : 'Test',
+              'ExpiryDate' => $this->transaction->getTransactionPanExpiryMonth() . $this->transaction->getTransactionPanExpiryYear(),
+              'PAN' => $this->transaction->getTransactionPanNumber(),
+              'CardSecurityCode' => $this->transaction->getTransactionPanCode(),
+              'Amount' => $this->transaction->getTransactionAmount(),
+              'Currency' => $this->transaction->getTransactionCurrency(),
+              'MerchantReference' => $this->transaction->getTransactionReference(),
+              'ElectronicCommerceIndicator' => $this->transaction->getTransactionECI(),   //ECIFlag
+              'CardholderName' => $this->transaction->getTransactionPanHolderName(),
+              'CardHolderAuthenticationID' => $this->transaction->getTransactionCAVV(), // CAVV
+              'CardHolderAuthenticationData' => $this->transaction->getTransactionIndex(), //TransactionId
+              'ThreeDSecure_SignedPARes' => $this->transaction->getTransactionThreeDomainServerPARES()
+          ]
+      ]),
+    ]);
+  }
 
-    if (!$this->config->getIveriApiLive()) {
-        $soapURL = self::MYGATE_ENTERPRISE_URL_TEST;
-    }
+  private function submitIveriRequest($method, $url, $params = []) {
 
-    $soapResponse = NULL;
-
-    $payload = new stdClass();
-    $payload->success = FALSE;
-    $payload->transactionType = $this->transaction->getTransactionType();
+    $params = array_merge($params, [
+        'Authorization' => $this->generateAuthHeader($url),
+    ]);
 
     try {
-      $this->transaction->getTransactionListener()->debitInitiated($this->transaction);
-
-      $soapClient = new SoapClient($soapURL);
-      $soapResponse = $soapClient->__soapCall('fProcessAndSettle', [
-        'GatewayID'           => $this->config->getIveriGatewayId(),
-        'MerchantID'          => $this->config->getIveriCustomerId(),
-        'ApplicationID'       => $this->config->getIveriApplicationId(),
-        'TransactionIndex'    => $this->transaction->getTransactionIndex(),
-        'Terminal'            => $this->config->getIveriTerminalId(),
-        'Mode'                => intval($this->config->getIveriApiLive()),
-        'MerchantReference'   => $this->transaction->getTransactionMerchantReference(),
-        'Amount'              => $this->transaction->getTransactionAmount(),
-        'Currency'            => $this->transaction->getTransactionCurrency(),
-        'CashBackAmount'      => '',
-        'CardType'            => $this->getCardTypeForLazyIveri($this->transaction->getTransactionPanNumber()),
-        'AccountType'         => '',
-        'CardNumber'          => $this->transaction->getTransactionPanNumber(),
-        'CardHolder'          => $this->transaction->getTransactionPanHolderName(),
-        'CVVNumber'           => $this->transaction->getTransactionPanCode(),
-        'ExpiryMonth'         => $this->transaction->getTransactionPanExpiryMonth(),
-        'ExpiryYear'          => $this->transaction->getTransactionPanExpiryYear(),
-        'Budget'              => '',
-        'BudgetPeriod'        => '',
-        'AuthorisationNumber' => '',
-        'PIN'                 => '',
-        'DebugMode'           => '',
-        'eCommerceIndicator'  => '',
-        'verifiedByVisaXID'   => '',
-        'verifiedByVisaCAFF'  => '',
-        'secureCodeUCAF'      => '',
-        'UCI'                 => '',
-        'IPAddress'           => '',
-        'ShippingCountryCode' => '',
-        'PurchaseItemsID'     => '',
-      ],[
-          "exceptions"        => true,
+      $httpClient = new Client([
+          'base_uri' => $this->iveriGatewayURL,
+          'verify' => false,
       ]);
-    }
-    catch (SoapFault $e) {
-      $payload->errorCode = 'X000';
-      $payload->errorMessage = 'SOAP API Connection Fault. An internal network error has occurred, please try again later.';
-    }
 
-    if (is_soap_fault($soapResponse) || !is_array($soapResponse)) {
-        $payload->errorCode = 'X000';
-        $payload->errorMessage = NULL;
-    } else {
-      $sanitizedData = $this->prettifyDisgustingResponse($soapResponse);
+      $httpRequest = new Request($method, $url, $params);
+      $httpResponse = $httpClient->send($httpRequest, $params);
 
-      if (!isset($sanitizedData['Result'])) {
-          $payload->errorCode = 'X001';
-          $payload->errorMessage = isset($sanitizedData['ErrorDesc']) ? str_replace('&apos;', '', $sanitizedData['ErrorDesc']) :
-                                   isset($sanitizedData['FSPMessage']) ? str_replace('&apos;', '', $sanitizedData['FSPMessage']) : NULL;
+      $httpResult = json_decode($httpResponse->getBody()->getContents());
 
-          $payload->transactionIndex = NULL;
-      } else {
-          $payload->success = ($sanitizedData['Result'] == 0);
-          $payload->errorCode = isset($sanitizedData['ErrorNo']) ? $sanitizedData['ErrorNo'] : NULL;
-          $payload->errorMessage = isset($sanitizedData['ErrorDesc']) ? str_replace('&apos;', '', $sanitizedData['ErrorDesc']) : NULL;
-          $payload->transactionAuthorisationID = isset($sanitizedData['AuthorisationID']) ? $sanitizedData['AuthorisationID'] : NULL;
-          $payload->threeDomainECI = isset($sanitizedData['ECI']) ? $sanitizedData['ECI'] : NULL;
-          $payload->transactionIndex = isset($sanitizedData['TransactionIndex']) ? $sanitizedData['TransactionIndex'] : NULL;
-
-          $this->transaction
-               ->setTransactionAuthorisationID($payload->transactionAuthorisationID)
-               ->setTransactionIndex($payload->transactionIndex);
-      }
+      echo '<pre>';
+      print_r($httpResult);
+      exit;
     }
 
-    $this->transaction->setTransactionResult(new TransactionResult($payload));
-
-    if ($this->transaction->fails()) {
-        $this->transaction->getTransactionListener()->debitFailed($this->transaction);
-    } else {
-        $this->transaction->getTransactionListener()->debitSucceeded($this->transaction);
+    catch(ClientException $e) {
+      $this->error = [
+        'code' => "N0001",
+        'desc' => "Connection Error: {$e->getMessage()}"
+      ];
     }
+    catch(RequestException $e) {
+      $this->error = [
+        'code' => "N0002",
+        'desc' => "Connection Error: {$e->getMessage()}"
+      ];
+    }
+    catch(Exception $e) {
+      $this->error = [
+        'code' => "N0002",
+        'desc' => "Connection Error: {$e->getMessage()}"
+      ];
+    }
+
+    echo '<pre>';
+    echo $e->getMessage();
+    //print_r($e);
+    exit;
+
+    // handle Response
+
   }
 
-  private function prettifyDisgustingResponse($array_items)
-  {
-      $pretty_response = [];
 
-      foreach ($array_items as $item) {
-          if (strlen($item) && strpos($item, '||')) {
-              $parts = explode('||', $item);
-              $key = trim($parts[0]);
-              $value = trim($parts[1]);
-              $pretty_response[(string) $key] = $value;
-          }
-      }
+  private function generateAuthHeader($endpoint) {
 
-      return $pretty_response;
+      $date = date('YmdHis500');
+
+      $token_bytes = $this->iveriGatewayURL . $endpoint . $date . md5($this->config->getIveriPassword(), true);
+      $token_hash = hash('sha256', $token_bytes, true);
+      $token_base64 = base64_encode($token_hash);
+
+      $auth = ''
+              . 'Basic '
+              . 'usergroup="' . $this->config->getIveriUserGroupId() . '", '
+              . 'username="' . $this->config->getIveriUsername() . '", '
+              . 'timestamp="' . $date . '", '
+              . 'token="' . $token_base64 . '"';
+
+    return $auth;
   }
-
-  private function getCardTypeForLazyIveri($card_number) {
-
-    $firstOne = substr($card_number, 0, 1);
-    $firstTwo = substr($card_number, 0, 2);
-    $firstThree = substr($card_number, 0, 3);
-    $firstFour = substr($card_number, 0, 4);
-    $firstSix = substr($card_number, 0, 6);
-
-    if ($firstOne == '4') {
-        return 4; // visa
-    }
-    if ($firstTwo >= '51' && $firstTwo <= '55') {
-        return 3; //mastercard
-    }
-    if ($firstTwo == '34' || $firstTwo == '37') {
-        return 1; // American Express
-    }
-    if ($firstTwo == '36') {
-        return 5; // Diners Club International
-    }
-    if ($firstFour == '2014' || $firstFour == '2149') {
-        return 5; // Diners Club International
-    }
-    if ($firstThree >= '300' && $firstThree <= '305') {
-        return 5; // Diners Club International
-    }
-    if (($firstFour == '6011') || ($firstSix >= '622126' && $firstSix <= '622925') || ($firstThree >= '644' && $firstThree <= '649') || ($firstTwo == '65')) {
-        return 2; // Discover
-    }
-
-    return 4;
-  }
-
 }

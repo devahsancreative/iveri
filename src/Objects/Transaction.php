@@ -30,11 +30,18 @@ class Transaction {
     private $transactionPanCode;
     private $transactionPanExpiryMonth;
     private $transactionPanExpiryYear;
-    private $transactionAmount; // in cents
+    private $transactionAmount;
     private $transactionReference;
     private $transactionCurrency;
     private $transactionThreeDomainServerPARES;
     private $transactionThreeDomainServerPAREQ;
+    private $transactionIndex;
+    private $transactionCAVV;
+    private $transactionECI;
+    private $transactionXID;
+    private $transactionSignature;
+
+    private $transactionType;
 
     private $built = FALSE;
 
@@ -99,6 +106,7 @@ class Transaction {
         'transactionPanExpiryMonth.required'   => "The PAN Expiry Month is required for {$this->transactionType} transactions",
         'transactionPanExpiryYear.required'   => "The PAN Expiry Year is required for {$this->transactionType} transactions",
         'transactionReference.required' => "The Transaction Reference is required for {$this->transactionType} transactions",
+        'transactionIndex.required' => "The Transaction Index is required for {$this->transactionType} transactions",
       ];
 
       switch($this->transactionType) {
@@ -123,8 +131,7 @@ class Transaction {
               'transactionPanExpiryMonth'         => 'required',
               'transactionPanExpiryYear'          => 'required',
               'transactionCurrency'               => 'required',
-              'transactionMerchantReference'      => 'required',
-              'transactionIndex'                  => 'required',
+              'transactionReference'              => 'required',
             ], $validationMessages);
             break;
 
@@ -187,7 +194,17 @@ class Transaction {
     }
 
     /**
-     * Get the value of Stephen Lake - Iveri API Wrapper Package
+     * Get the value of Transaction Id
+     *
+     * @return mixed
+     */
+    public function getTransactionId()
+    {
+        return $this->transactionIdentifier;
+    }
+
+    /**
+     * Get the value of Transaction Id
      *
      * @return mixed
      */
@@ -197,7 +214,7 @@ class Transaction {
     }
 
     /**
-     * Set the value of Stephen Lake - Iveri API Wrapper Package
+     * Set the value of Transaction Id
      *
      * @param mixed transactionIdentifier
      *
@@ -317,6 +334,16 @@ class Transaction {
     }
 
     /**
+     * Get the value of Transaction Amount
+     *
+     * @return mixed
+     */
+    public function getTransactionAmountInCents()
+    {
+        return ($this->transactionAmount*100);
+    }
+
+    /**
      * Set the value of Transaction Amount
      *
      * @param mixed transactionAmount
@@ -374,6 +401,234 @@ class Transaction {
     public function setTransactionCurrency($transactionCurrency)
     {
         $this->transactionCurrency = $transactionCurrency;
+
+        return $this;
+    }
+
+    /**
+     * Get the value of Transaction Result
+     *
+     * @return mixed
+     */
+    public function getTransactionResult()
+    {
+        return $this->transactionResult;
+    }
+
+    /**
+     * Get the value of Transaction Pan Number
+     *
+     * @return mixed
+     */
+    public function getTransactionPanNumber()
+    {
+        return $this->transactionPanNumber;
+    }
+
+    /**
+     * Set the value of Transaction Pan Number
+     *
+     * @param mixed transactionPanNumber
+     *
+     * @return self
+     */
+    public function setTransactionPanNumber($transactionPanNumber)
+    {
+        $this->transactionPanNumber = $transactionPanNumber;
+
+        return $this;
+    }
+
+    /**
+     * Get the value of Transaction Three Domain Server
+     *
+     * @return mixed
+     */
+    public function getTransactionThreeDomainServerPARES()
+    {
+        return $this->transactionThreeDomainServerPARES;
+    }
+
+    /**
+     * Set the value of Transaction Three Domain Server
+     *
+     * @param mixed transactionThreeDomainServerPARES
+     *
+     * @return self
+     */
+    public function setTransactionThreeDomainServerPARES($transactionThreeDomainServerPARES)
+    {
+        $this->transactionThreeDomainServerPARES = $transactionThreeDomainServerPARES;
+
+        return $this;
+    }
+
+    /**
+     * Get the value of Transaction Three Domain Server
+     *
+     * @return mixed
+     */
+    public function getTransactionThreeDomainServerPAREQ()
+    {
+        return $this->transactionThreeDomainServerPAREQ;
+    }
+
+    /**
+     * Set the value of Transaction Three Domain Server
+     *
+     * @param mixed transactionThreeDomainServerPAREQ
+     *
+     * @return self
+     */
+    public function setTransactionThreeDomainServerPAREQ($transactionThreeDomainServerPAREQ)
+    {
+        $this->transactionThreeDomainServerPAREQ = $transactionThreeDomainServerPAREQ;
+
+        return $this;
+    }
+
+    /**
+     * Get the value of Transaction Type
+     *
+     * @return mixed
+     */
+    public function getTransactionType()
+    {
+        return $this->transactionType;
+    }
+
+    /**
+     * Set the value of Transaction Type
+     *
+     * @param mixed transactionType
+     *
+     * @return self
+     */
+    public function setTransactionType($transactionType)
+    {
+        $this->transactionType = $transactionType;
+
+        return $this;
+    }
+
+    /**
+     * Get the value of Transaction Index
+     *
+     * @return mixed
+     */
+    public function getTransactionIndex()
+    {
+        return $this->transactionIndex;
+    }
+
+    /**
+     * Set the value of Transaction Index
+     *
+     * @param mixed transactionIndex
+     *
+     * @return self
+     */
+    public function setTransactionIndex($transactionIndex)
+    {
+        $this->transactionIndex = $transactionIndex;
+
+        return $this;
+    }
+
+
+    /**
+     * Get the value of Transaction
+     *
+     * @return mixed
+     */
+    public function getTransactionECI()
+    {
+        return $this->transactionECI;
+    }
+
+    /**
+     * Set the value of Transaction
+     *
+     * @param mixed transactionECI
+     *
+     * @return self
+     */
+    public function setTransactionECI($transactionECI)
+    {
+        $this->transactionECI = $transactionECI;
+
+        return $this;
+    }
+
+
+    /**
+     * Get the value of Transaction
+     *
+     * @return mixed
+     */
+    public function getTransactionCAVV()
+    {
+        return $this->transactionCAVV;
+    }
+
+    /**
+     * Set the value of Transaction
+     *
+     * @param mixed transactionCAVV
+     *
+     * @return self
+     */
+    public function setTransactionCAVV($transactionCAVV)
+    {
+        $this->transactionCAVV = $transactionCAVV;
+
+        return $this;
+    }
+
+    /**
+     * Get the value of Transaction
+     *
+     * @return mixed
+     */
+    public function getTransactionXID()
+    {
+        return $this->transactionXID;
+    }
+
+    /**
+     * Set the value of Transaction
+     *
+     * @param mixed transactionXID
+     *
+     * @return self
+     */
+    public function setTransactionXID($transactionXID)
+    {
+        $this->transactionXID = $transactionXID;
+
+        return $this;
+    }
+
+    /**
+     * Get the value of Transaction Signature
+     *
+     * @return mixed
+     */
+    public function getTransactionSignature()
+    {
+        return $this->transactionSignature;
+    }
+
+    /**
+     * Set the value of Transaction Signature
+     *
+     * @param mixed transactionSignature
+     *
+     * @return self
+     */
+    public function setTransactionSignature($transactionSignature)
+    {
+        $this->transactionSignature = $transactionSignature;
 
         return $this;
     }

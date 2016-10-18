@@ -71,6 +71,10 @@ class TransactionResult {
       return $this->payload->threeDomainCAVV;
     }
 
+    public function getThreeDomainOrderId() {
+      return $this->payload->threeDomainOrderId;
+    }
+
     public function getPayload() {
       return $this->payload;
     }
