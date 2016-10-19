@@ -1,7 +1,5 @@
 # Iveri Enterprise Integration API Package
 
-[![Latest Stable Version](https://poser.pugx.org/stephenlake/iveri/v/stable)](https://packagist.org/packages/stephenlake/iveri) [![Latest Unstable Version](https://poser.pugx.org/stephenlake/iveri/v/unstable)](https://packagist.org/packages/stephenlake/iveri) [![Total Downloads](https://poser.pugx.org/stephenlake/iveri/downloads)](https://packagist.org/packages/stephenlake/iveri)  [![License](https://poser.pugx.org/stephenlake/iveri/license)](https://packagist.org/packages/stephenlake/iveri) 
-
 **Iveri Enterprise** Integration API Package
 
 - Written & Documented by Stephen Lake under the MIT License
