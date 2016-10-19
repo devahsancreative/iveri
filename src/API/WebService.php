@@ -53,6 +53,8 @@ class WebService {
 
   private function performThreeDomainLookup() {
 
+    $this->transaction->getTransactionListener()->threeDomainLookupInitiated($this->transaction);
+
     $centinel = new CentinelService();
     $centinel->setRequestProcessorId($this->config->getIveriCmpiProcessorId())
              ->setRequestMerchantId($this->config->getIveriMerchantId())
@@ -110,6 +112,8 @@ class WebService {
 
   private function performThreeDomainAuthorize() {
 
+    $this->transaction->getTransactionListener()->threeDomainAuthorizeInitiated($this->transaction);
+
     $centinel = new CentinelService();
     $centinel->setRequestProcessorId($this->config->getIveriCmpiProcessorId())
              ->setRequestMerchantId($this->config->getIveriMerchantId())
@@ -163,6 +167,8 @@ class WebService {
 
   private function performDebit() {
 
+    $this->transaction->getTransactionListener()->debitInitiated($this->transaction);
+
     $this->submitIveriRequest('POST', 'transactions', [
       'Content-Type' => 'application/json',
       'body' => json_encode([
@@ -174,7 +180,7 @@ class WebService {
               'ExpiryDate' => $this->transaction->getTransactionPanExpiryMonth() . $this->transaction->getTransactionPanExpiryYear(),
               'PAN' => $this->transaction->getTransactionPanNumber(),
               'CardSecurityCode' => $this->transaction->getTransactionPanCode(),
-              'Amount' => $this->transaction->getTransactionAmount(),
+              'Amount' => $this->transaction->getTransactionAmountInCents(),
               'Currency' => $this->transaction->getTransactionCurrency(),
               'MerchantReference' => $this->transaction->getTransactionReference(),
               'ElectronicCommerceIndicator' => $this->transaction->getTransactionECI(),   //ECIFlag
@@ -193,6 +199,10 @@ class WebService {
         'Authorization' => $this->generateAuthHeader($url),
     ]);
 
+    $payload = new stdClass();
+    $payload->success = FALSE;
+    $payload->transactionType = $this->transaction->getTransactionType();
+
     try {
       $httpClient = new Client([
           'base_uri' => $this->iveriGatewayURL,
@@ -201,40 +211,56 @@ class WebService {
 
       $httpRequest = new Request($method, $url, $params);
       $httpResponse = $httpClient->send($httpRequest, $params);
-
       $httpResult = json_decode($httpResponse->getBody()->getContents());
-
-      echo '<pre>';
-      print_r($httpResult);
-      exit;
     }
 
     catch(ClientException $e) {
-      $this->error = [
-        'code' => "N0001",
-        'desc' => "Connection Error: {$e->getMessage()}"
-      ];
+      $payload->success = FALSE;
+      $payload->errorCode = "N0001";
+      $payload->errorMessage = "Connection Error: {$e->getMessage()}";
     }
     catch(RequestException $e) {
-      $this->error = [
-        'code' => "N0002",
-        'desc' => "Connection Error: {$e->getMessage()}"
-      ];
+      $payload->success = FALSE;
+      $payload->errorCode = "N0001";
+      $payload->errorMessage = "Connection Error: {$e->getMessage()}";
     }
     catch(Exception $e) {
-      $this->error = [
-        'code' => "N0002",
-        'desc' => "Connection Error: {$e->getMessage()}"
-      ];
+      $payload->success = FALSE;
+      $payload->errorCode = "N0001";
+      $payload->errorMessage = "Connection Error: {$e->getMessage()}";
     }
 
-    echo '<pre>';
-    echo $e->getMessage();
-    //print_r($e);
-    exit;
+    $payload->detail = $httpResult;
 
-    // handle Response
+    if (!isset($httpResult->Transaction->Result)) {
 
+      if (!isset($payload->errorCode)) {
+        $payload->success = FALSE;
+        $payload->errorCode = "X0002";
+        $payload->errorMessage = "Response Error: Received an unexpected response from the Iveri API";
+      }
+
+    } else {
+
+      if ($httpResult->Transaction->Result->Status != 0) {
+        $payload->success = FALSE;
+        $payload->errorCode = $httpResult->Transaction->Result->Code;
+        $payload->errorMessage = $httpResult->Transaction->Result->Description;
+      }
+      else {
+        $payload->success = TRUE;
+        $payload->errorCode = NULL;
+        $payload->errorMessage = NULL;
+      }
+    }
+
+    $this->transaction->setTransactionResult(new TransactionResult($payload));
+
+    if ($this->transaction->fails()) {
+        $this->transaction->getTransactionListener()->debitFailed($this->transaction);
+    } else {
+        $this->transaction->getTransactionListener()->debitSucceeded($this->transaction);
+    }
   }
 
 

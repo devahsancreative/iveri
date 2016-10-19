@@ -75,6 +75,10 @@ class TransactionResult {
       return $this->payload->threeDomainOrderId;
     }
 
+    public function getTransactionDetail() {
+      return $this->payload->detail;
+    }
+
     public function getPayload() {
       return $this->payload;
     }
