@@ -21,7 +21,7 @@
 ## Usage
 ### Example of full 3DSecured Transaction
 
-#### Create a new configuration instance containing your MyGate account details
+#### Create a new configuration instance containing your Iveri account details
 ```
 use StephenLake\Iveri\Objects\Configuration;
 
@@ -53,7 +53,7 @@ $ThreeDomainLookup->setTransactionAmount('<amount-in-decimal-format'>)
                   ->setTransactionCurrency('<currency-iso>') // Alpha ISO
                   ->build();
 ```
-**Note**: The `Transaction` will not be built and cannot be used in a `MyGate` instance until it is built. If a required parameter is not set, you will be presented with a `TransactionValidateException` describing the missing required parameter.
+**Note**: The `Transaction` will not be built and cannot be used in a `Iveri` instance until it is built. If a required parameter is not set, you will be presented with a `TransactionValidateException` describing the missing required parameter.
 
 #### Create Iveri instance and associate the configuration and transaction
 ```
@@ -181,7 +181,7 @@ Regardless of whether or not the 3DSecure process fails, the payload will be sub
 - `MD`: The unique identifier provided by you to fetch the saved transaction and complete it.
 - `PaRes`: The **P**ayment **A**uthorization **Res**ponse that will be used to authorize the transaction.
 
-At this point, an `HTTP POST` has been made your URL (`threeDomainSecureTerminateURL`) and your MyGate API, Configuration and Transaction instances have been lost, so we need to rebuild using the `MD` which is a unique identifier for our transaction.
+At this point, an `HTTP POST` has been made your URL (`threeDomainSecureTerminateURL`) and your Iveri API, Configuration and Transaction instances have been lost, so we need to rebuild using the `MD` which is a unique identifier for our transaction.
 
 Your `threeDomainSecureTerminateURL` should contain something like the following (Using plain PHP):
 
@@ -239,8 +239,8 @@ Your `threeDomainSecureTerminateURL` should contain something like the following
            ->setTransactionIndex($cachedTransactionData['transactionIndex'])  
            ->build();
 
-     $MyGateService->setTransaction($Debit)
-                   ->submitTransaction();
+     $IveriServiceAPI->setTransaction($Debit)
+                     ->submitTransaction();
 
    if ($Debit->succeeds()) {
    
