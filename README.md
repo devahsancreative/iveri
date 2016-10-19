@@ -1,9 +1,6 @@
 # Iveri Enterprise Integration API Package
 
-[![Latest Stable Version](https://poser.pugx.org/stephenlake/iveri/v/stable)]
-[![Latest Unstable Version](https://poser.pugx.org/stephenlake/iveri/v/unstable)]
-[![Total Downloads](https://poser.pugx.org/stephenlake/iveri/downloads)]
-[![License](https://poser.pugx.org/stephenlake/iveri/license)]
+[![Latest Stable Version](https://poser.pugx.org/stephenlake/iveri/v/stable)](https://packagist.org/packages/stephenlake/iveri) [![Latest Unstable Version](https://poser.pugx.org/stephenlake/iveri/v/unstable)](https://packagist.org/packages/stephenlake/iveri) [![Total Downloads](https://poser.pugx.org/stephenlake/iveri/downloads)](https://packagist.org/packages/stephenlake/iveri)  [![License](https://poser.pugx.org/stephenlake/iveri/license)](https://packagist.org/packages/stephenlake/iveri) 
 
 **Iveri Enterprise** Integration API Package
 
