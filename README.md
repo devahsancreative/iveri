@@ -70,11 +70,13 @@ if ($ThreeDomainLookup->succeeds()) {
 
   if($ThreeDomainLookup->isThreeDomainSecured()) {
   
-    // Handle 3DSecure
+    // Handle 3DSecure Process
+    // See 'Handling 3DSecure'
     
   } else {
     
-    // Submit Debit Transaction
+    // Submit Transaction Request
+    // See 'Submitting Debit Transactions'
     
   }
 
@@ -85,6 +87,8 @@ if ($ThreeDomainLookup->succeeds()) {
   
 }
 ```
+
+### Handling 3DSecure
 
 ### Extending the Transaction Listener
 
