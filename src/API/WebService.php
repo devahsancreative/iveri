@@ -183,11 +183,11 @@ class WebService {
               'Amount' => $this->transaction->getTransactionAmountInCents(),
               'Currency' => $this->transaction->getTransactionCurrency(),
               'MerchantReference' => $this->transaction->getTransactionReference(),
-              'ElectronicCommerceIndicator' => $this->transaction->getTransactionECI(),   //ECIFlag
+              'ElectronicCommerceIndicator' => $this->getEcommerceIndicatorFlag($this->transaction->getTransactionECI()),   //ECIFlag
               'CardholderName' => $this->transaction->getTransactionPanHolderName(),
-              'CardHolderAuthenticationID' => $this->transaction->getTransactionCAVV(), // CAVV
-              'CardHolderAuthenticationData' => $this->transaction->getTransactionIndex(), //TransactionId
-              'ThreeDSecure_SignedPARes' => $this->transaction->getTransactionThreeDomainServerPARES()
+              'CardHolderAuthenticationID' => $this->transaction->getTransactionXID(), //TransactionId
+              'CardHolderAuthenticationData' => $this->transaction->getTransactionCAVV(),// CAVV
+              //'ThreeDSecure_SignedPARes' => $this->transaction->getTransactionThreeDomainServerPARES()
           ]
       ]),
     ]);
@@ -263,6 +263,19 @@ class WebService {
     }
   }
 
+  private function getEcommerceIndicatorFlag($eciCode) {
+
+        $eci_flags = [
+            '00' => 'SecureChannel',
+            '01' => 'ThreeDSecureAttempted',
+            '02' => 'ThreeDSecure',
+            '05' => 'ThreeDSecure',
+            '06' => 'ThreeDSecureAttempted',
+            '07' => 'SecureChannel'
+        ];
+
+        return isset($eci_flags["{$eciCode}"]) ? $eci_flags["{$eciCode}"] : 'ThreeDSecureAttempted';
+  }
 
   private function generateAuthHeader($endpoint) {
 
