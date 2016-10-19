@@ -43,8 +43,8 @@ $configuration->setIveriUserGroupId('<your-user-group>')
 use StephenLake\Iveri\Objects\Transactions\ThreeDomainLookup;
 use StephenLake\Iveri\Listeners\TransactionListener;
 
-$ThreeDomainLooukp = new ThreeDomainLookup(new TransactionListener());
-$ThreeDomainLooukp->setTransactionAmount('<amount-in-decimal-format'>)
+$ThreeDomainLookup = new ThreeDomainLookup(new TransactionListener());
+$ThreeDomainLookup->setTransactionAmount('<amount-in-decimal-format'>)
                   ->setTransactionPanNumber('<pan>')
                   ->setTransactionPanExpiryMonth('<pan-expiry-month>') // MM
                   ->setTransactionPanExpiryYear('<pan-expiry-year>') // YYYY
@@ -54,7 +54,39 @@ $ThreeDomainLooukp->setTransactionAmount('<amount-in-decimal-format'>)
 ```
 **Note**: The `Transaction` will not be built and cannot be used in a `MyGate` instance until it is built. If a required parameter is not set, you will be presented with a `TransactionValidateException` describing the missing required parameter.
 
-**TransactionListener**
+#### Create Iveri instance and associate the configuration and transaction
+```
+use use StephenLake\Iveri\Iveri;
+
+$IveriServiceAPI = new Iveri($configuration);
+$IveriServiceAPI->setTransaction($ThreeDomainLookup)
+                ->submitTransaction();
+```
+At this point, your lookup request is ready with a result.
+
+#### Processing a result
+```
+if ($ThreeDomainLookup->succeeds()) {
+
+  if($ThreeDomainLookup->isThreeDomainSecured()) {
+  
+    // Handle 3DSecure
+    
+  } else {
+    
+    // Submit Debit Transaction
+    
+  }
+
+} else {
+
+  $errorCode    = $ThreeDomainLookup->getTransactionResult()->getErrorCode();
+  $errorMessage = $ThreeDomainLookup->getTransactionResult()->getErrorMessage();
+  
+}
+```
+
+### Extending the Transaction Listener
 
 When constructing the `Transaction` instance, you must pass through an instance of `TransactionListener` which fires off events on certain transaction conditions. You can create your own `TransactionListener` and receive notifications of these events by can extending the default `TransactionListener` as follows.
 
@@ -82,36 +114,4 @@ new ThreeDomainLookup(new CustomTransactionListener);
 or 
 ```
 $ThreeDomainLookup->setTransactionListener(new CustomTransactionListener)
-```
-
-#### Create Iveri instance and associate the configuration and transaction
-```
-use use StephenLake\Iveri\Iveri;
-
-$IveriServiceAPI = new Iveri($configuration);
-$IveriServiceAPI->setTransaction($ThreeDomainLooukp)
-                ->submitTransaction();
-```
-At this point, your lookup request is ready with a result.
-
-#### Processing a result
-```
-if ($ThreeDomainLooukp->succeeds()) {
-
-  if($ThreeDomainLooukp->isThreeDomainSecured()) {
-  
-    // Handle 3DSecure
-    
-  } else {
-    
-    // Submit Debit Transaction
-    
-  }
-
-} else {
-
-  $errorCode    = $ThreeDomainLookup->getTransactionResult()->getErrorCode();
-  $errorMessage = $ThreeDomainLookup->getTransactionResult()->getErrorMessage();
-  
-}
 ```
