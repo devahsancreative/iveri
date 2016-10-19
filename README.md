@@ -13,10 +13,11 @@
 
 #### Dependencies (Handled by Composer)
 - guzzlehttp/guzzle ^6.2
-- ramsey/uuid ^3.5
 - illuminate/validation ^5.3
 - illuminate/support ^5.3
 - illuminate/translation ^5.3
+- ramsey/uuid ^3.5
+- stephenlake/centinel ^1.0
 
 ## Usage
 ### Example of full 3DSecured Transaction
