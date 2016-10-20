@@ -137,6 +137,7 @@ class Transaction {
 
         case self::TRANS_3DSAUTHORIZE:
             $validator = $validation->make(get_object_vars($this), [
+              'transactionPanNumber'              => 'required',
               'transactionIndex'                  => 'required',
               'transactionThreeDomainServerPARES' => 'required',
             ], $validationMessages);
