@@ -19,7 +19,7 @@
         "illuminate/validation": "^5.3",
         "illuminate/support": "^5.3",
         "illuminate/translation": "^5.3",
-        "stephenlake/centinel": "^1.0"
+        "stephenlake/centinel": "^1.0.3"
     },
     "require-dev": {
         "phpunit/phpunit": "~5.0"
