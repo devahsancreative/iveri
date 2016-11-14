@@ -117,6 +117,7 @@ class WebService
         $centinel->setRequestProcessorId($this->config->getIveriCmpiProcessorId())
              ->setRequestMerchantId($this->config->getIveriMerchantId())
              ->setRequestTransactionPwd($this->config->getIveriCmpiPassword())
+             ->setRequestCardNumber($this->transaction->getTransactionPanNumber())
              ->setRequestTransactionType(CentinelService::TRANS_CREDIT_DEBIT_CARD)
              ->setRequestTransactionId($this->transaction->getTransactionIndex())
              ->setRequestPARES($this->transaction->getTransactionThreeDomainServerPARES())
