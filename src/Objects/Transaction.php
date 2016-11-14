@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Stephen Lake - Iveri API Wrapper Package
+ * Stephen Lake - Iveri API Wrapper Package.
  *
  * @author Stephen Lake <stephen-lake@live.com>
  */
@@ -9,7 +9,6 @@
 namespace StephenLake\Iveri\Objects;
 
 use StephenLake\Iveri\Listeners\TransactionListener;
-use StephenLake\Iveri\Objects\TransactionResult;
 use StephenLake\Iveri\Exceptions\TransactionValidateException;
 use Illuminate\Container\Container;
 use Illuminate\Filesystem\Filesystem;
@@ -18,8 +17,8 @@ use Illuminate\Translation\Translator;
 use Illuminate\Validation\Factory;
 use Ramsey\Uuid\Uuid;
 
-class Transaction {
-
+class Transaction
+{
     private $transactionIdentifier;
 
     private $transactionListener;
@@ -43,7 +42,7 @@ class Transaction {
 
     private $transactionType;
 
-    private $built = FALSE;
+    private $built = false;
 
     const TRANS_DEBIT = 'DEBIT';
     const TRANS_3DSLOOKUP = '3DSECURE_LOOKUP';
@@ -51,13 +50,13 @@ class Transaction {
 
     public function __construct(TransactionListener $transactionListener)
     {
-      $this->transactionIdentifier = Uuid::uuid4()->toString();
-      $this->transactionListener = $transactionListener;
+        $this->transactionIdentifier = Uuid::uuid4()->toString();
+        $this->transactionListener = $transactionListener;
     }
 
     public function getTransactionListener()
     {
-      return $this->transactionListener;
+        return $this->transactionListener;
     }
 
     public function setTransactionListener(TransactionListener $transactionListener)
@@ -67,96 +66,102 @@ class Transaction {
         return $this;
     }
 
-    public function setTransactionResult(TransactionResult $transactionResult) {
+    public function setTransactionResult(TransactionResult $transactionResult)
+    {
         $this->transactionResult = $transactionResult;
 
         return $this;
     }
 
-    public function isBuilt() {
-      return $this->built;
+    public function isBuilt()
+    {
+        return $this->built;
     }
 
-    private function validData() {
-      $validation = new Factory(new Translator(new FileLoader(new Filesystem, ''), ''), new Container);
+    private function validData()
+    {
+        $validation = new Factory(new Translator(new FileLoader(new Filesystem(), ''), ''), new Container());
 
-      $transactionTypes = implode(',', [
+        $transactionTypes = implode(',', [
           self::TRANS_DEBIT,
           self::TRANS_3DSLOOKUP,
-          self::TRANS_3DSAUTHORIZE
+          self::TRANS_3DSAUTHORIZE,
       ]);
 
-      $entryValidator = $validation->make(get_object_vars($this), [
-        'transactionType'           => "required|in:{$transactionTypes}",
+        $entryValidator = $validation->make(get_object_vars($this), [
+        'transactionType' => "required|in:{$transactionTypes}",
       ], [
-        'transactionType.required'  => 'The Transaction Type is required',
-        'transactionType.in'        => "Invalid Transction Type provided. Available types: {$transactionTypes}",
+        'transactionType.required' => 'The Transaction Type is required',
+        'transactionType.in' => "Invalid Transction Type provided. Available types: {$transactionTypes}",
       ]);
 
-      if ($entryValidator->fails()) {
-        return $entryValidator;
-      }
+        if ($entryValidator->fails()) {
+            return $entryValidator;
+        }
 
-      $validationMessages = [
+        $validationMessages = [
         'transactionAmount.required' => "The Transaction Amount is required for {$this->transactionType} transactions",
-        'transactionCurrency.required'   => "The Transaction Currency is required for {$this->transactionType} transactions",
-        'transactionPanHolderName.required'   => "The PAN Holder Name is required for {$this->transactionType} transactions",
-        'transactionPanNumber.required'   => "The PAN Number is required for {$this->transactionType} transactions",
-        'transactionPanCode.required'   => "The PAN Security Code is required for {$this->transactionType} transactions",
-        'transactionPanExpiryMonth.required'   => "The PAN Expiry Month is required for {$this->transactionType} transactions",
-        'transactionPanExpiryYear.required'   => "The PAN Expiry Year is required for {$this->transactionType} transactions",
+        'transactionCurrency.required' => "The Transaction Currency is required for {$this->transactionType} transactions",
+        'transactionPanHolderName.required' => "The PAN Holder Name is required for {$this->transactionType} transactions",
+        'transactionPanNumber.required' => "The PAN Number is required for {$this->transactionType} transactions",
+        'transactionPanCode.required' => "The PAN Security Code is required for {$this->transactionType} transactions",
+        'transactionPanExpiryMonth.required' => "The PAN Expiry Month is required for {$this->transactionType} transactions",
+        'transactionPanExpiryYear.required' => "The PAN Expiry Year is required for {$this->transactionType} transactions",
         'transactionReference.required' => "The Transaction Reference is required for {$this->transactionType} transactions",
         'transactionIndex.required' => "The Transaction Index is required for {$this->transactionType} transactions",
       ];
 
-      switch($this->transactionType) {
+        $validator = null;
+
+        switch ($this->transactionType) {
 
         case self::TRANS_3DSLOOKUP:
             $validator = $validation->make(get_object_vars($this), [
-              'transactionAmount'                 => 'required',
-              'transactionCurrency'               => 'required',
-              'transactionPanNumber'              => 'required',
-              'transactionPanExpiryMonth'         => 'required',
-              'transactionPanExpiryYear'          => 'required',
-              'transactionReference'              => 'required',
+              'transactionAmount' => 'required',
+              'transactionCurrency' => 'required',
+              'transactionPanNumber' => 'required',
+              'transactionPanExpiryMonth' => 'required',
+              'transactionPanExpiryYear' => 'required',
+              'transactionReference' => 'required',
             ], $validationMessages);
             break;
 
         case self::TRANS_DEBIT:
             $validator = $validation->make(get_object_vars($this), [
-              'transactionAmount'                 => 'required',
-              'transactionPanHolderName'          => 'required',
-              'transactionPanNumber'              => 'required',
-              'transactionPanCode'                => 'required',
-              'transactionPanExpiryMonth'         => 'required',
-              'transactionPanExpiryYear'          => 'required',
-              'transactionCurrency'               => 'required',
-              'transactionReference'              => 'required',
+              'transactionAmount' => 'required',
+              'transactionPanHolderName' => 'required',
+              'transactionPanNumber' => 'required',
+              'transactionPanCode' => 'required',
+              'transactionPanExpiryMonth' => 'required',
+              'transactionPanExpiryYear' => 'required',
+              'transactionCurrency' => 'required',
+              'transactionReference' => 'required',
             ], $validationMessages);
             break;
 
         case self::TRANS_3DSAUTHORIZE:
             $validator = $validation->make(get_object_vars($this), [
-              'transactionPanNumber'              => 'required',
-              'transactionIndex'                  => 'required',
+              'transactionPanNumber' => 'required',
+              'transactionIndex' => 'required',
               'transactionThreeDomainServerPARES' => 'required',
             ], $validationMessages);
             break;
       }
 
-      return $validator;
+        return $validator;
     }
 
-    public function build() {
-      $validator = $this->validData();
+    public function build()
+    {
+        $validator = $this->validData();
 
-      if ($validator->fails()) {
-        throw new TransactionValidateException("Cannot build transaction: {$validator->errors()->first()}");
-      }
+        if ($validator->fails()) {
+            throw new TransactionValidateException("Cannot build transaction: {$validator->errors()->first()}");
+        }
 
-      $this->built = TRUE;
+        $this->built = true;
 
-      switch($this->transactionType) {
+        switch ($this->transactionType) {
 
         case self::TRANS_3DSLOOKUP:
             $this->transactionListener->threeDomainLookupPrepared($this);
@@ -171,31 +176,36 @@ class Transaction {
             break;
       }
 
-      return $this;
+        return $this;
     }
 
-    public function fails() {
-      return $this->transactionResult->hasError();
+    public function fails()
+    {
+        return $this->transactionResult->hasError();
     }
 
-    public function succeeds() {
-      return !$this->fails();
+    public function succeeds()
+    {
+        return !$this->fails();
     }
 
-    public function errorCode() {
-      return $this->transactionResult->getErrorCode();
+    public function errorCode()
+    {
+        return $this->transactionResult->getErrorCode();
     }
 
-    public function errorMessage() {
-      return $this->transactionResult->getErrorMessage();
+    public function errorMessage()
+    {
+        return $this->transactionResult->getErrorMessage();
     }
 
-    public function isThreeDomainSecured() {
-      return $this->transactionResult->isThreeDomainSecured();
+    public function isThreeDomainSecured()
+    {
+        return $this->transactionResult->isThreeDomainSecured();
     }
 
     /**
-     * Get the value of Transaction Id
+     * Get the value of Transaction Id.
      *
      * @return mixed
      */
@@ -205,7 +215,7 @@ class Transaction {
     }
 
     /**
-     * Get the value of Transaction Id
+     * Get the value of Transaction Id.
      *
      * @return mixed
      */
@@ -215,7 +225,7 @@ class Transaction {
     }
 
     /**
-     * Set the value of Transaction Id
+     * Set the value of Transaction Id.
      *
      * @param mixed transactionIdentifier
      *
@@ -229,7 +239,7 @@ class Transaction {
     }
 
     /**
-     * Get the value of Transaction Pan Holder Name
+     * Get the value of Transaction Pan Holder Name.
      *
      * @return mixed
      */
@@ -239,7 +249,7 @@ class Transaction {
     }
 
     /**
-     * Set the value of Transaction Pan Holder Name
+     * Set the value of Transaction Pan Holder Name.
      *
      * @param mixed transactionPanHolderName
      *
@@ -253,7 +263,7 @@ class Transaction {
     }
 
     /**
-     * Get the value of Transaction Pan Code
+     * Get the value of Transaction Pan Code.
      *
      * @return mixed
      */
@@ -263,7 +273,7 @@ class Transaction {
     }
 
     /**
-     * Set the value of Transaction Pan Code
+     * Set the value of Transaction Pan Code.
      *
      * @param mixed transactionPanCode
      *
@@ -277,7 +287,7 @@ class Transaction {
     }
 
     /**
-     * Get the value of Transaction Pan Expiry Month
+     * Get the value of Transaction Pan Expiry Month.
      *
      * @return mixed
      */
@@ -287,7 +297,7 @@ class Transaction {
     }
 
     /**
-     * Set the value of Transaction Pan Expiry Month
+     * Set the value of Transaction Pan Expiry Month.
      *
      * @param mixed transactionPanExpiryMonth
      *
@@ -301,7 +311,7 @@ class Transaction {
     }
 
     /**
-     * Get the value of Transaction Pan Expiry Year
+     * Get the value of Transaction Pan Expiry Year.
      *
      * @return mixed
      */
@@ -311,7 +321,7 @@ class Transaction {
     }
 
     /**
-     * Set the value of Transaction Pan Expiry Year
+     * Set the value of Transaction Pan Expiry Year.
      *
      * @param mixed transactionPanExpiryYear
      *
@@ -325,7 +335,7 @@ class Transaction {
     }
 
     /**
-     * Get the value of Transaction Amount
+     * Get the value of Transaction Amount.
      *
      * @return mixed
      */
@@ -335,17 +345,17 @@ class Transaction {
     }
 
     /**
-     * Get the value of Transaction Amount
+     * Get the value of Transaction Amount.
      *
      * @return mixed
      */
     public function getTransactionAmountInCents()
     {
-        return ($this->transactionAmount*100);
+        return $this->transactionAmount * 100;
     }
 
     /**
-     * Set the value of Transaction Amount
+     * Set the value of Transaction Amount.
      *
      * @param mixed transactionAmount
      *
@@ -359,7 +369,7 @@ class Transaction {
     }
 
     /**
-     * Get the value of Transaction Reference
+     * Get the value of Transaction Reference.
      *
      * @return mixed
      */
@@ -369,7 +379,7 @@ class Transaction {
     }
 
     /**
-     * Set the value of Transaction Reference
+     * Set the value of Transaction Reference.
      *
      * @param mixed transactionReference
      *
@@ -383,7 +393,7 @@ class Transaction {
     }
 
     /**
-     * Get the value of Transaction Currency
+     * Get the value of Transaction Currency.
      *
      * @return mixed
      */
@@ -393,7 +403,7 @@ class Transaction {
     }
 
     /**
-     * Set the value of Transaction Currency
+     * Set the value of Transaction Currency.
      *
      * @param mixed transactionCurrency
      *
@@ -407,7 +417,7 @@ class Transaction {
     }
 
     /**
-     * Get the value of Transaction Result
+     * Get the value of Transaction Result.
      *
      * @return mixed
      */
@@ -417,7 +427,7 @@ class Transaction {
     }
 
     /**
-     * Get the value of Transaction Pan Number
+     * Get the value of Transaction Pan Number.
      *
      * @return mixed
      */
@@ -427,7 +437,7 @@ class Transaction {
     }
 
     /**
-     * Set the value of Transaction Pan Number
+     * Set the value of Transaction Pan Number.
      *
      * @param mixed transactionPanNumber
      *
@@ -441,7 +451,7 @@ class Transaction {
     }
 
     /**
-     * Get the value of Transaction Three Domain Server
+     * Get the value of Transaction Three Domain Server.
      *
      * @return mixed
      */
@@ -451,7 +461,7 @@ class Transaction {
     }
 
     /**
-     * Set the value of Transaction Three Domain Server
+     * Set the value of Transaction Three Domain Server.
      *
      * @param mixed transactionThreeDomainServerPARES
      *
@@ -465,7 +475,7 @@ class Transaction {
     }
 
     /**
-     * Get the value of Transaction Three Domain Server
+     * Get the value of Transaction Three Domain Server.
      *
      * @return mixed
      */
@@ -475,7 +485,7 @@ class Transaction {
     }
 
     /**
-     * Set the value of Transaction Three Domain Server
+     * Set the value of Transaction Three Domain Server.
      *
      * @param mixed transactionThreeDomainServerPAREQ
      *
@@ -489,7 +499,7 @@ class Transaction {
     }
 
     /**
-     * Get the value of Transaction Type
+     * Get the value of Transaction Type.
      *
      * @return mixed
      */
@@ -499,7 +509,7 @@ class Transaction {
     }
 
     /**
-     * Set the value of Transaction Type
+     * Set the value of Transaction Type.
      *
      * @param mixed transactionType
      *
@@ -513,7 +523,7 @@ class Transaction {
     }
 
     /**
-     * Get the value of Transaction Index
+     * Get the value of Transaction Index.
      *
      * @return mixed
      */
@@ -523,7 +533,7 @@ class Transaction {
     }
 
     /**
-     * Set the value of Transaction Index
+     * Set the value of Transaction Index.
      *
      * @param mixed transactionIndex
      *
@@ -536,9 +546,8 @@ class Transaction {
         return $this;
     }
 
-
     /**
-     * Get the value of Transaction
+     * Get the value of Transaction.
      *
      * @return mixed
      */
@@ -548,7 +557,7 @@ class Transaction {
     }
 
     /**
-     * Set the value of Transaction
+     * Set the value of Transaction.
      *
      * @param mixed transactionECI
      *
@@ -561,9 +570,8 @@ class Transaction {
         return $this;
     }
 
-
     /**
-     * Get the value of Transaction
+     * Get the value of Transaction.
      *
      * @return mixed
      */
@@ -573,7 +581,7 @@ class Transaction {
     }
 
     /**
-     * Set the value of Transaction
+     * Set the value of Transaction.
      *
      * @param mixed transactionCAVV
      *
@@ -587,7 +595,7 @@ class Transaction {
     }
 
     /**
-     * Get the value of Transaction
+     * Get the value of Transaction.
      *
      * @return mixed
      */
@@ -597,7 +605,7 @@ class Transaction {
     }
 
     /**
-     * Set the value of Transaction
+     * Set the value of Transaction.
      *
      * @param mixed transactionXID
      *
@@ -611,7 +619,7 @@ class Transaction {
     }
 
     /**
-     * Get the value of Transaction Signature
+     * Get the value of Transaction Signature.
      *
      * @return mixed
      */
@@ -621,7 +629,7 @@ class Transaction {
     }
 
     /**
-     * Set the value of Transaction Signature
+     * Set the value of Transaction Signature.
      *
      * @param mixed transactionSignature
      *
@@ -633,5 +641,4 @@ class Transaction {
 
         return $this;
     }
-
 }

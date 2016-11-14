@@ -184,7 +184,7 @@ class WebService
               'CardholderName' => $this->transaction->getTransactionPanHolderName(),
               'CardHolderAuthenticationID' => $this->transaction->getTransactionXID(), //TransactionId
               'CardHolderAuthenticationData' => $this->transaction->getTransactionCAVV(), // CAVV
-              //'ThreeDSecure_SignedPARes' => $this->transaction->getTransactionThreeDomainServerPARES()
+              'ThreeDSecure_SignedPARes' => $this->transaction->getTransactionThreeDomainServerPARES(),
           ],
       ]),
     ]);
@@ -193,18 +193,19 @@ class WebService
     private function submitIveriRequest($method, $url, $params = [])
     {
         $params = array_merge($params, [
-        'Authorization' => $this->generateAuthHeader($url),
-    ]);
+            'Authorization' => $this->generateAuthHeader($url),
+        ]);
 
         $payload = new stdClass();
         $payload->success = false;
         $payload->transactionType = $this->transaction->getTransactionType();
+        $httpResult = null;
 
         try {
             $httpClient = new Client([
-          'base_uri' => $this->iveriGatewayURL,
-          'verify' => false,
-      ]);
+                'base_uri' => $this->iveriGatewayURL,
+                'verify' => false,
+            ]);
 
             $httpRequest = new Request($method, $url, $params);
             $httpResponse = $httpClient->send($httpRequest, $params);
