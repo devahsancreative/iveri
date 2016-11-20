@@ -17,7 +17,7 @@
 - illuminate/support ^5.3
 - illuminate/translation ^5.3
 - ramsey/uuid ^3.5
-- stephenlake/centinel ^1.0
+- stephenlake/centinel ^1.3
 
 ## Usage
 ### Example of full 3DSecured Transaction
